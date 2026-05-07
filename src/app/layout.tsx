@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { cn } from "@/lib/utils";
+import { Providers } from "@/components/providers";
 
 const inter = Inter({
   variable: "--font-inter",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
 });
 
@@ -18,9 +25,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className="dark">
-      <body className={`${inter.variable} antialiased`}>
-        {children}
+    <html lang="pt-BR" className={cn("dark", inter.variable, geistMono.variable)}>
+      <body className="bg-background text-foreground antialiased font-sans">
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
