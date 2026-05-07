@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --app --src-dir --import-alias \"@/*\" --no-git --yes)",
+      "Bash(npm install *)",
+      "Bash(npx prisma *)",
+      "Bash(grep -E \"^\\(next|react|react-dom|typescript\\)$\")",
+      "Bash(node *)",
+      "Read(//c/dev/lineup-system/**)",
+      "Read(//c/dev/lineup-system/src/**)",
+      "Bash(npm run *)"
+    ]
+  }
+}
