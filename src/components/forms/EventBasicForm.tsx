@@ -6,9 +6,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { eventBasicSchema, type EventBasicFormData } from "@/lib/validations/event";
 import { createEventDraft } from "@/app/(dashboard)/cadastro-lineup/actions";
+import { updateEvent } from "@/app/(dashboard)/evento/[id]/editar/actions";
 import { generateSlug } from "@/lib/utils";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 
 const FIELD_CLASS =
   "w-full bg-transparent border border-white/10 rounded-none px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-green-500/60 transition-colors font-mono";
@@ -19,10 +18,11 @@ const LABEL_CLASS =
 interface EventBasicFormProps {
   defaultValues?: Partial<EventBasicFormData>;
   eventId?: string;
+  mode?: "create" | "edit";
   onSaved?: (id: string) => void;
 }
 
-export function EventBasicForm({ defaultValues, eventId, onSaved }: EventBasicFormProps) {
+export function EventBasicForm({ defaultValues, eventId, mode = "create", onSaved }: EventBasicFormProps) {
   const router = useRouter();
 
   const {
@@ -36,16 +36,20 @@ export function EventBasicForm({ defaultValues, eventId, onSaved }: EventBasicFo
   });
 
   const name = watch("name") ?? "";
-  const slugPreview = name.length >= 3 ? generateSlug(name) : "";
+  const slugPreview = mode === "create" && name.length >= 3 ? generateSlug(name) : "";
 
   async function onSubmit(data: EventBasicFormData) {
     try {
-      const id = await createEventDraft(data);
-      toast.success("Rascunho salvo.");
-      if (onSaved) {
-        onSaved(id);
+      if (mode === "edit" && eventId) {
+        await updateEvent(eventId, data);
+        toast.success("Evento atualizado.");
+        if (onSaved) onSaved(eventId);
+        else router.push("/home");
       } else {
-        router.push(`/cadastro-lineup/${id}/palcos`);
+        const id = await createEventDraft(data);
+        toast.success("Rascunho salvo.");
+        if (onSaved) onSaved(id);
+        else router.push(`/cadastro-lineup/${id}/palcos`);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao salvar.");
@@ -134,7 +138,7 @@ export function EventBasicForm({ defaultValues, eventId, onSaved }: EventBasicFo
           disabled={isSubmitting}
           className="neon-btn"
         >
-          {isSubmitting ? "Salvando..." : "Próximo →"}
+          {isSubmitting ? "Salvando..." : mode === "edit" ? "Salvar Alterações" : "Próximo →"}
         </button>
       </div>
     </form>

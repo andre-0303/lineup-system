@@ -6,6 +6,7 @@ export interface ThemeConfig {
   logoUrl?: string;
   fontFamily: 'monospace' | 'sans-serif' | 'serif';
   layout: 'compact' | 'spacious';
+  scheduleSize?: 'small' | 'medium' | 'large';
 }
 
 export interface SocialLinks {
