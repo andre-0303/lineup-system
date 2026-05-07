@@ -24,15 +24,13 @@ export async function deleteEvent(eventId: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Não autorizado");
 
-  const event = await prisma.event.findUnique({
-    where: { id: eventId },
-    select: { createdBy: true },
+  const { count } = await prisma.event.deleteMany({
+    where: { id: eventId, createdBy: session.user.id },
   });
 
-  if (event?.createdBy !== session.user.id) {
-    throw new Error("Você não tem permissão para excluir este evento");
+  if (count === 0) {
+    throw new Error("Evento não encontrado ou sem permissão.");
   }
 
-  await prisma.event.delete({ where: { id: eventId } });
   revalidatePath("/home");
 }

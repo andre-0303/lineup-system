@@ -53,6 +53,7 @@ export function EventCard({ event }: EventCardProps) {
       toast.success("Evento excluído.");
     } catch {
       toast.error("Erro ao excluir evento.");
+    } finally {
       setDeleting(false);
     }
   }
@@ -63,8 +64,12 @@ export function EventCard({ event }: EventCardProps) {
       return;
     }
     const url = `${window.location.origin}/lineup/${event.slug}`;
-    await navigator.clipboard.writeText(url);
-    toast.success("Link copiado!");
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copiado!");
+    } catch {
+      toast.error("Não foi possível copiar o link.");
+    }
   }
 
   function handleDownload() {
@@ -142,11 +147,12 @@ export function EventCard({ event }: EventCardProps) {
 
       {/* Actions */}
       <div className="flex items-center gap-1 p-3">
-        <Link href={`/evento/${event.id}/editar`}>
-          <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-white transition-colors rounded">
-            <Edit2 className="h-3 w-3" />
-            Editar
-          </button>
+        <Link
+          href={`/evento/${event.id}/editar`}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-white transition-colors rounded no-underline"
+        >
+          <Edit2 className="h-3 w-3" />
+          Editar
         </Link>
 
         <button
@@ -186,9 +192,10 @@ export function EventCard({ event }: EventCardProps) {
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => startTransition(handleDelete)}
-                className="bg-red-600 hover:bg-red-700"
+                disabled={deleting || isPending}
+                className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:pointer-events-none"
               >
-                Excluir
+                {deleting || isPending ? "Excluindo..." : "Excluir"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
