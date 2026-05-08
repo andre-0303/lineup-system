@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Meus Eventos | LineUp System",
+  description: "Gerencie seus lineups de eventos de tecnologia.",
+};
 import { getUserEvents } from "./actions";
 import { EventCard } from "@/components/lineup/EventCard";
 import { EventCardSkeleton } from "@/components/lineup/EventCardSkeleton";

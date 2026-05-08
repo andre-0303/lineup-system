@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { WizardStepper } from "@/components/layout/WizardStepper";
 import { EventBasicForm } from "@/components/forms/EventBasicForm";
+
+export const metadata: Metadata = {
+  title: "Novo Evento | LineUp System",
+  description: "Crie um novo lineup para seu evento de tecnologia.",
+};
 
 export default function CadastroLineupPage() {
   return (

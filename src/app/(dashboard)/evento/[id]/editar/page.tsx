@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Layers, Users, Clock, Palette, Globe, GlobeOff } from "lucide-react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+
+export const metadata: Metadata = {
+  title: "Editar Evento | LineUp System",
+  description: "Edite as informações e configurações do seu evento.",
+};
 import { prisma } from "@/lib/prisma";
 import { format } from "date-fns";
 import { EventBasicForm } from "@/components/forms/EventBasicForm";
@@ -105,7 +111,7 @@ export default async function EditarEventoPage({ params }: Props) {
                   <Link
                     key={href}
                     href={href}
-                    className="flex items-center justify-between px-3 py-2 text-xs transition-colors no-underline text-white/50 hover:text-white border-l border-white/[0.06]"
+                    className="flex items-center justify-between px-3 py-2 text-xs transition-colors no-underline text-white/50 hover:text-white border-l border-white/6"
                   >
                     <span className="flex items-center gap-2">
                       <Icon className="h-3 w-3" />
