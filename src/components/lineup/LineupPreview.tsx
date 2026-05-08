@@ -9,56 +9,81 @@ interface LineupPreviewProps {
   previewId?: string;
 }
 
-export const LINEUP_SIZE = 1080; // 1080×1080 — Instagram/social post
+export const LINEUP_SIZE = 1080;
 
-function getFontFamily(fontFamily: ThemeConfig["fontFamily"]): string {
+const DISPLAY_FONT = "'Bebas Neue', 'Arial Black', sans-serif";
+const MONO_FONT = '"JetBrains Mono", "Courier New", monospace';
+const MONTHS_PT = ["JAN","FEV","MAR","ABR","MAI","JUN","JUL","AGO","SET","OUT","NOV","DEZ"];
+
+function getBodyFont(fontFamily: ThemeConfig["fontFamily"]): string {
   switch (fontFamily) {
-    case "monospace": return '"JetBrains Mono", "Courier New", monospace';
+    case "monospace": return MONO_FONT;
     case "sans-serif": return '"Inter", system-ui, sans-serif';
     case "serif": return '"Georgia", "Times New Roman", serif';
   }
 }
 
-function getScheduleFontSize(size?: ThemeConfig["scheduleSize"]): number {
-  switch (size) {
-    case "small": return 11;
-    case "large": return 19;
-    default: return 14;
-  }
-}
-
 function formatUtcDateParts(date: Date) {
   const dd = String(date.getUTCDate()).padStart(2, "0");
-  const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
   const yyyy = String(date.getUTCFullYear());
-  return { dd, mm, yyyy };
+  return { dd, yyyy };
 }
 
 export function LineupPreview({ event, theme, previewId = "lineup-preview" }: LineupPreviewProps) {
-  const font = getFontFamily(theme.fontFamily);
+  const bodyFont = getBodyFont(theme.fontFamily);
   const isCompact = theme.layout === "compact";
-  const scheduleFontSize = getScheduleFontSize(theme.scheduleSize);
+
   const S = LINEUP_SIZE;
+  const P = theme.primaryColor;
+  const A = theme.accentColor ?? P;
+  const BG = theme.backgroundColor;
+  const TC = theme.textColor;
 
   const startDate = new Date(event.startDate);
   const endDate = new Date(event.endDate);
   const sameDay = startDate.toUTCString().slice(0, 16) === endDate.toUTCString().slice(0, 16);
-  const { dd, mm, yyyy } = formatUtcDateParts(startDate);
+  const { dd, yyyy } = formatUtcDateParts(startDate);
   const { dd: dd2 } = formatUtcDateParts(endDate);
   const dateDisplay = sameDay ? dd : `${dd}·${dd2}`;
+  const monthName = MONTHS_PT[startDate.getUTCMonth()];
+
+  // Date font size — shrinks for multi-day ranges
+  const dateFontSize = isCompact
+    ? (dateDisplay.length <= 2 ? 118 : dateDisplay.length <= 5 ? 82 : 62)
+    : (dateDisplay.length <= 2 ? 145 : dateDisplay.length <= 5 ? 100 : 74);
+
+  // Event name font size — shrinks for many words
+  const wordCount = event.name.split(" ").length;
+  const nameFontSize = isCompact
+    ? (wordCount <= 2 ? 88 : wordCount <= 3 ? 70 : 54)
+    : (wordCount <= 2 ? 108 : wordCount <= 3 ? 86 : 66);
 
   const allSessions = [...event.sessions].sort(
     (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
   );
-  const maxSessions = isCompact ? 10 : 8;
+  const maxSessions = isCompact ? 12 : 9;
   const visibleSessions = allSessions.slice(0, maxSessions);
 
-  const PAD = 64;
-  // Left panel width ≈ 38% of canvas
-  const LEFT_W = Math.round(S * 0.38);
-  const DIVIDER_GAP = 44;
-  const RIGHT_X = PAD + LEFT_W + DIVIDER_GAP;
-  const RIGHT_W = S - RIGHT_X - PAD;
+  // ── Fixed zone heights (must sum to 1080) ──
+  // HEADER: 70  NAME: 255  DATE: 178  SCHED_HDR: 52  FOOTER: 70
+  // SESSIONS: 1080 - 70 - 255 - 178 - 52 - 70 = 455
+  const HEADER_H = 70;
+  const NAME_H = 255;
+  const DATE_H = 178;
+  const SCHED_HDR_H = 52;
+  const FOOTER_H = 70;
+  const SESSIONS_H = S - HEADER_H - NAME_H - DATE_H - SCHED_HDR_H - FOOTER_H; // 455
+  const PAD = 56;
+
+  // Adaptive font sizes based on available row height
+  const ROW_H = visibleSessions.length > 0
+    ? Math.floor(SESSIONS_H / visibleSessions.length)
+    : SESSIONS_H;
+  const sizeM = theme.scheduleSize === "small" ? 0.82 : theme.scheduleSize === "large" ? 1.18 : 1.0;
+  const timeFontSize = Math.min(54, Math.max(20, Math.floor(ROW_H * 0.33 * sizeM)));
+  const titleFontSize = Math.min(28, Math.max(13, Math.floor(ROW_H * 0.21 * sizeM)));
+  const speakerFontSize = Math.min(17, Math.max(10, Math.floor(ROW_H * 0.14 * sizeM)));
+  const timeEndSize = Math.max(9, timeFontSize - 14);
 
   return (
     <div
@@ -68,279 +93,378 @@ export function LineupPreview({ event, theme, previewId = "lineup-preview" }: Li
         height: `${S}px`,
         position: "relative",
         overflow: "hidden",
-        backgroundColor: theme.backgroundColor,
-        color: theme.textColor,
-        fontFamily: font,
-        backgroundImage: `
-          linear-gradient(${theme.primaryColor}05 1px, transparent 1px),
-          linear-gradient(90deg, ${theme.primaryColor}05 1px, transparent 1px)
-        `,
-        backgroundSize: "36px 36px",
-      }}
-    >
-      {/* ── Top accent bar ── */}
-      <div style={{
-        position: "absolute",
-        top: 0, left: 0, right: 0,
-        height: "4px",
-        background: `linear-gradient(90deg, ${theme.primaryColor}, ${theme.primaryColor}00 70%)`,
-      }} />
-
-      {/* ── Triangle top-right ── */}
-      <div style={{
-        position: "absolute",
-        top: 0, right: 0,
-        width: 0, height: 0,
-        borderLeft: "130px solid transparent",
-        borderTop: `130px solid ${theme.primaryColor}`,
-      }} />
-
-      {/* ═══════════════════════════ LEFT PANEL ═══════════════════════════ */}
-      <div style={{
-        position: "absolute",
-        left: PAD,
-        top: PAD,
-        bottom: PAD,
-        width: `${LEFT_W}px`,
+        backgroundColor: BG,
+        color: TC,
+        fontFamily: bodyFont,
         display: "flex",
         flexDirection: "column",
-        justifyContent: "space-between",
-      }}>
+      }}
+    >
+      {/* ── Background grid ── */}
+      <div style={{
+        position: "absolute", inset: 0, pointerEvents: "none",
+        backgroundImage: `
+          linear-gradient(${P}05 1px, transparent 1px),
+          linear-gradient(90deg, ${P}05 1px, transparent 1px)
+        `,
+        backgroundSize: "44px 44px",
+      }} />
 
-        {/* — Event name — */}
-        <div>
-          {theme.logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={theme.logoUrl}
-              alt=""
-              style={{ height: "32px", marginBottom: "14px", objectFit: "contain", display: "block" }}
-            />
-          )}
-          <div style={{
-            fontSize: isCompact ? "36px" : "44px",
-            fontWeight: 800,
-            lineHeight: 1.0,
-            letterSpacing: "-0.02em",
-            textTransform: "uppercase",
-            color: theme.textColor,
+      {/* ── Radial glow: top-left ── */}
+      <div style={{
+        position: "absolute", inset: 0, pointerEvents: "none",
+        background: `radial-gradient(ellipse 65% 50% at 12% 14%, ${P}0d 0%, transparent 55%)`,
+      }} />
+
+      {/* ── Radial glow: bottom-right (accent) ── */}
+      <div style={{
+        position: "absolute", inset: 0, pointerEvents: "none",
+        background: `radial-gradient(ellipse 50% 50% at 88% 90%, ${A}09 0%, transparent 55%)`,
+      }} />
+
+      {/* ── Diagonal hatching: top-right corner ── */}
+      <div style={{
+        position: "absolute", top: 0, right: 0,
+        width: "210px", height: "210px", pointerEvents: "none",
+        backgroundImage: `repeating-linear-gradient(-45deg, ${P}09, ${P}09 1px, transparent 1px, transparent 13px)`,
+      }} />
+
+      {/* ── Top accent stripe ── */}
+      <div style={{
+        position: "absolute", top: 0, left: 0, right: 0, height: "4px",
+        background: `linear-gradient(90deg, ${P}, ${P}70 65%, transparent)`,
+      }} />
+
+      {/* ── Corner registration marks ── */}
+      <div style={{ position: "absolute", top: 16, left: 16, width: 22, height: 22,
+        borderTop: `2px solid ${P}45`, borderLeft: `2px solid ${P}45` }} />
+      <div style={{ position: "absolute", top: 16, right: 16, width: 22, height: 22,
+        borderTop: `2px solid ${P}45`, borderRight: `2px solid ${P}45` }} />
+      <div style={{ position: "absolute", bottom: 16, left: 16, width: 22, height: 22,
+        borderBottom: `2px solid ${P}45`, borderLeft: `2px solid ${P}45` }} />
+      <div style={{ position: "absolute", bottom: 16, right: 16, width: 22, height: 22,
+        borderBottom: `2px solid ${P}45`, borderRight: `2px solid ${P}45` }} />
+
+      {/* ════════ HEADER BAR (70px) ════════ */}
+      <div style={{
+        position: "relative", zIndex: 1,
+        height: `${HEADER_H}px`, flexShrink: 0,
+        display: "flex", alignItems: "center",
+        justifyContent: "space-between",
+        padding: `0 ${PAD}px`,
+        borderBottom: `1px solid ${P}10`,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ width: "7px", height: "7px", background: P }} />
+          <span style={{
+            fontFamily: MONO_FONT,
+            fontSize: "9px", letterSpacing: "0.52em",
+            textTransform: "uppercase", color: `${TC}42`,
           }}>
-            {event.name.split(" ").map((word, i) => <div key={i}>{word}</div>)}
-          </div>
-          <div style={{ marginTop: "12px", width: "36px", height: "3px", background: theme.primaryColor }} />
+            EVENTO TECH
+          </span>
+        </div>
+        {event.sessions.length > 0 && (
+          <span style={{
+            fontFamily: MONO_FONT,
+            fontSize: "9px", letterSpacing: "0.38em",
+            color: `${A}68`, textTransform: "uppercase",
+          }}>
+            {event.sessions.length} SESSÕES
+          </span>
+        )}
+      </div>
+
+      {/* ════════ EVENT NAME (255px) ════════ */}
+      <div style={{
+        position: "relative", zIndex: 1,
+        height: `${NAME_H}px`, flexShrink: 0,
+        padding: `18px ${PAD}px 0`,
+        display: "flex", flexDirection: "column",
+        justifyContent: "flex-start",
+        overflow: "hidden",
+      }}>
+        {theme.logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={theme.logoUrl}
+            alt=""
+            style={{ height: "22px", marginBottom: "8px", objectFit: "contain", display: "block" }}
+          />
+        )}
+
+        <div style={{
+          fontFamily: DISPLAY_FONT,
+          fontSize: `${nameFontSize}px`,
+          fontWeight: 400,
+          lineHeight: 0.92,
+          letterSpacing: "0.01em",
+          textTransform: "uppercase",
+          color: TC,
+        }}>
+          {event.name.split(" ").map((word, i) => (
+            <div key={i}>{word}</div>
+          ))}
         </div>
 
-        {/* — Date (fills the middle space) — */}
-        <div style={{ lineHeight: 0.88, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-          {/* Day: massive, solid, glowing */}
+        <div style={{ marginTop: "14px", width: "48px", height: "3px", background: P }} />
+      </div>
+
+      {/* ════════ DATE BAND (178px) ════════ */}
+      <div style={{
+        position: "relative", zIndex: 1,
+        height: `${DATE_H}px`, flexShrink: 0,
+        display: "flex", alignItems: "center",
+        padding: `0 ${PAD}px`, gap: "28px",
+        background: `${P}07`,
+        borderTop: `1px solid ${P}18`,
+        borderBottom: `1px solid ${P}18`,
+        overflow: "hidden",
+      }}>
+        {/* Faint year watermark behind the band */}
+        <div style={{
+          position: "absolute",
+          right: `${PAD - 8}px`, top: "50%",
+          fontFamily: DISPLAY_FONT,
+          fontSize: "210px",
+          color: `${P}06`,
+          lineHeight: 0,
+          letterSpacing: "-0.04em",
+          pointerEvents: "none", userSelect: "none",
+        }}>
+          {yyyy}
+        </div>
+
+        {/* Day number */}
+        <div style={{
+          fontFamily: DISPLAY_FONT,
+          fontSize: `${dateFontSize}px`,
+          fontWeight: 400,
+          lineHeight: 1,
+          letterSpacing: "-0.02em",
+          color: P,
+          textShadow: `0 0 36px ${P}40`,
+          flexShrink: 0,
+        }}>
+          {dateDisplay}
+        </div>
+
+        {/* Divider */}
+        <div style={{
+          width: "1px", height: "55%",
+          background: `${P}28`, flexShrink: 0,
+        }} />
+
+        {/* Month + Year */}
+        <div style={{ flexShrink: 0 }}>
           <div style={{
-            fontSize: isCompact ? "140px" : "164px",
-            fontWeight: 900,
-            letterSpacing: "-0.05em",
-            color: theme.primaryColor,
-            textShadow: `0 0 50px ${theme.primaryColor}55, 0 0 100px ${theme.primaryColor}1a`,
+            fontFamily: DISPLAY_FONT,
+            fontSize: "42px", letterSpacing: "0.12em",
+            color: TC, lineHeight: 1,
           }}>
-            {dateDisplay}
+            {monthName}
           </div>
-          {/* Month.Year: readable, solid */}
           <div style={{
-            fontSize: isCompact ? "26px" : "31px",
-            fontWeight: 700,
-            letterSpacing: "0.06em",
-            color: theme.textColor,
-            opacity: 0.88,
-            marginTop: "6px",
+            fontFamily: DISPLAY_FONT,
+            fontSize: "34px", letterSpacing: "0.12em",
+            color: TC, opacity: 0.42, lineHeight: 1,
+            marginTop: "3px",
           }}>
-            {mm}
-            <span style={{ color: theme.primaryColor, margin: "0 3px" }}>.</span>
             {yyyy}
           </div>
         </div>
 
-        {/* — Location + URL — */}
-        <div style={{ paddingBottom: "2px" }}>
+        {/* Location — right-aligned in the band */}
+        {event.location && (
           <div style={{
-            fontSize: "10px",
-            letterSpacing: "0.22em",
-            textTransform: "uppercase",
-            color: `${theme.textColor}55`,
-            marginBottom: "4px",
+            marginLeft: "auto",
+            fontFamily: MONO_FONT,
+            fontSize: "10px", letterSpacing: "0.3em",
+            textTransform: "uppercase", color: `${TC}35`,
           }}>
-            {event.location ?? ""}
+            {event.location}
           </div>
-          <div style={{
-            fontSize: "9px",
-            letterSpacing: "0.12em",
-            color: `${theme.primaryColor}60`,
-          }}>
-            /lineup/{event.slug}
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* ── Vertical divider ── */}
+      {/* ════════ SCHEDULE HEADER (52px) ════════ */}
       <div style={{
-        position: "absolute",
-        left: `${PAD + LEFT_W + 20}px`,
-        top: PAD,
-        bottom: PAD,
-        width: "1px",
-        background: `linear-gradient(to bottom,
-          transparent,
-          ${theme.primaryColor}25 15%,
-          ${theme.primaryColor}25 85%,
-          transparent)`,
-      }} />
+        position: "relative", zIndex: 1,
+        height: `${SCHED_HDR_H}px`, flexShrink: 0,
+        display: "flex", alignItems: "center",
+        padding: `0 ${PAD}px`, gap: "12px",
+      }}>
+        <span style={{
+          fontFamily: DISPLAY_FONT,
+          fontSize: "11px", letterSpacing: "0.55em",
+          textTransform: "uppercase", color: `${P}60`,
+        }}>
+          PROGRAMAÇÃO
+        </span>
+        <div style={{ flex: 1, height: "1px", background: `${P}18` }} />
+        {allSessions.length > maxSessions && (
+          <span style={{
+            fontFamily: MONO_FONT,
+            fontSize: "9px", letterSpacing: "0.12em",
+            color: `${P}40`,
+          }}>
+            +{allSessions.length - maxSessions} mais
+          </span>
+        )}
+      </div>
 
-      {/* ═══════════════════════════ RIGHT PANEL ═══════════════════════════ */}
+      {/* ════════ SESSIONS (flex, 455px total) ════════ */}
       <div style={{
-        position: "absolute",
-        left: `${RIGHT_X}px`,
-        top: PAD,
-        bottom: PAD,
-        width: `${RIGHT_W}px`,
+        position: "relative", zIndex: 1,
+        flex: 1,
         display: "flex",
         flexDirection: "column",
+        overflow: "hidden",
       }}>
-
-        {/* SCHEDULE label */}
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          marginBottom: "16px",
-        }}>
-          <span style={{
-            fontSize: "8px",
-            letterSpacing: "0.5em",
-            textTransform: "uppercase",
-            color: `${theme.primaryColor}70`,
-          }}>SCHEDULE</span>
-          <div style={{ flex: 1, height: "1px", background: `${theme.primaryColor}25` }} />
-        </div>
-
-        {/* ── Sessions: flex column, space-between so they fill the panel ── */}
         {visibleSessions.length === 0 ? (
-          <div style={{ color: `${theme.textColor}25`, fontSize: "12px" }}>
+          <div style={{
+            flex: 1, display: "flex",
+            alignItems: "center", justifyContent: "center",
+            fontFamily: MONO_FONT, fontSize: "14px",
+            color: `${TC}25`, letterSpacing: "0.12em",
+          }}>
             Sem sessões cadastradas.
           </div>
         ) : (
-          <div style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            // Distribute sessions to fill available height
-            justifyContent: visibleSessions.length <= 4 ? "flex-start" : "space-between",
-            gap: visibleSessions.length <= 4 ? `${Math.max(8, 60 / visibleSessions.length)}px` : "0",
-          }}>
-            {visibleSessions.map((session, idx) => {
-              const start = new Date(session.startTime).toISOString().slice(11, 16);
-              const end = new Date(session.endTime).toISOString().slice(11, 16);
-              const typeInfo = SESSION_TYPES.find((t) => t.value === session.sessionType);
-              const accentColor = typeInfo?.color ?? theme.primaryColor;
-              const speakerNames = session.speakers.map((ss) => ss.speaker.name).join(", ");
-              const isLast = idx === visibleSessions.length - 1;
+          visibleSessions.map((session, idx) => {
+            const start = new Date(session.startTime).toISOString().slice(11, 16);
+            const end = new Date(session.endTime).toISOString().slice(11, 16);
+            const typeInfo = SESSION_TYPES.find((t) => t.value === session.sessionType);
+            const sColor = typeInfo?.color ?? P;
+            const speakerNames = session.speakers.map((ss) => ss.speaker.name).join(", ");
+            const isLast = idx === visibleSessions.length - 1;
 
-              return (
-                <div
-                  key={session.id}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "80px 1fr",
-                    gap: "10px",
-                    paddingBottom: isLast || visibleSessions.length > 4 ? "0" : "0",
-                    borderBottom: !isLast ? `1px solid ${theme.textColor}07` : "none",
-                    paddingTop: idx > 0 && visibleSessions.length > 4 ? "0" : "0",
-                  }}
-                >
-                  {/* Time: white, readable */}
+            return (
+              <div
+                key={session.id}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  padding: `0 ${PAD}px`,
+                  gap: "18px",
+                  borderBottom: !isLast ? `1px solid ${TC}07` : "none",
+                  background: idx % 2 === 1 ? `${TC}025` : "transparent",
+                }}
+              >
+                {/* Session type color bar */}
+                <div style={{
+                  width: "4px",
+                  height: "62%",
+                  background: sColor,
+                  opacity: 0.62,
+                  flexShrink: 0,
+                  borderRadius: "2px",
+                }} />
+
+                {/* Time */}
+                <div style={{
+                  fontFamily: DISPLAY_FONT,
+                  fontSize: `${timeFontSize}px`,
+                  lineHeight: 1,
+                  color: TC,
+                  opacity: 0.88,
+                  flexShrink: 0,
+                  minWidth: `${Math.round(timeFontSize * 2.6)}px`,
+                }}>
+                  {start}
                   <div style={{
-                    fontSize: `${scheduleFontSize - 1}px`,
-                    fontWeight: 600,
-                    color: theme.textColor,
-                    opacity: 0.9,
-                    letterSpacing: "0.02em",
-                    paddingTop: "2px",
-                    lineHeight: 1.3,
+                    fontFamily: MONO_FONT,
+                    fontSize: `${timeEndSize}px`,
+                    opacity: 0.35,
+                    marginTop: "2px",
+                    letterSpacing: "0.03em",
+                    fontWeight: 400,
                   }}>
-                    {start}
-                    <div style={{ fontSize: `${scheduleFontSize - 3}px`, opacity: 0.45, marginTop: "1px" }}>{end}</div>
-                  </div>
-
-                  {/* Title + badge + speakers */}
-                  <div>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: "5px", flexWrap: "wrap" }}>
-                      <span style={{
-                        fontSize: `${scheduleFontSize}px`,
-                        fontWeight: 600,
-                        color: theme.textColor,
-                        lineHeight: 1.25,
-                      }}>
-                        {session.title}
-                      </span>
-                      {typeInfo && (
-                        <span style={{
-                          fontSize: `${Math.max(7, scheduleFontSize - 5)}px`,
-                          letterSpacing: "0.12em",
-                          textTransform: "uppercase",
-                          color: accentColor,
-                          background: `${accentColor}15`,
-                          padding: "1px 4px",
-                          whiteSpace: "nowrap",
-                        }}>
-                          {typeInfo.label}
-                        </span>
-                      )}
-                    </div>
-                    {speakerNames && (
-                      <div style={{
-                        fontSize: `${Math.max(9, scheduleFontSize - 3)}px`,
-                        color: `${theme.textColor}60`,
-                        marginTop: "2px",
-                        lineHeight: 1.2,
-                      }}>
-                        {speakerNames}
-                      </div>
-                    )}
+                    {end}
                   </div>
                 </div>
-              );
-            })}
 
-            {allSessions.length > maxSessions && (
-              <div style={{
-                fontSize: "10px",
-                letterSpacing: "0.1em",
-                color: `${theme.primaryColor}45`,
-                marginTop: "6px",
-              }}>
-                +{allSessions.length - maxSessions} sessões
+                {/* Title + speakers */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: `${titleFontSize}px`,
+                    fontWeight: 700,
+                    color: TC,
+                    lineHeight: 1.2,
+                    marginBottom: speakerNames ? "4px" : "0",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}>
+                    {session.title}
+                  </div>
+                  {speakerNames && (
+                    <div style={{
+                      fontFamily: MONO_FONT,
+                      fontSize: `${speakerFontSize}px`,
+                      color: `${TC}52`,
+                      lineHeight: 1.2,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}>
+                      {speakerNames}
+                    </div>
+                  )}
+                </div>
+
+                {/* Type label */}
+                {typeInfo && (
+                  <div style={{
+                    fontFamily: MONO_FONT,
+                    fontSize: "8px",
+                    letterSpacing: "0.22em",
+                    textTransform: "uppercase",
+                    color: sColor,
+                    opacity: 0.7,
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                  }}>
+                    {typeInfo.label}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            );
+          })
         )}
-
-        {/* — Decorative bars bottom-right — */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "3px", marginTop: "14px" }}>
-          {[36, 24, 12].map((w, i) => (
-            <div key={i} style={{
-              width: `${w}px`,
-              height: "2px",
-              background: theme.primaryColor,
-              opacity: 0.15 + i * 0.12,
-            }} />
-          ))}
-        </div>
       </div>
 
-      {/* ── Triangle bottom-left ── */}
+      {/* ════════ FOOTER (70px) ════════ */}
+      <div style={{
+        position: "relative", zIndex: 1,
+        height: `${FOOTER_H}px`, flexShrink: 0,
+        display: "flex", alignItems: "center",
+        justifyContent: "space-between",
+        padding: `0 ${PAD}px`,
+        borderTop: `1px solid ${P}12`,
+      }}>
+        <span style={{
+          fontFamily: MONO_FONT,
+          fontSize: "9px", letterSpacing: "0.25em",
+          color: `${TC}22`, textTransform: "uppercase",
+        }}>
+          {event.location ?? ""}
+        </span>
+        <span style={{
+          fontFamily: MONO_FONT,
+          fontSize: "9px", letterSpacing: "0.12em",
+          color: `${P}45`,
+        }}>
+          /lineup/{event.slug}
+        </span>
+      </div>
+
+      {/* ── Bottom accent stripe ── */}
       <div style={{
         position: "absolute",
-        bottom: 0, left: 0,
-        width: 0, height: 0,
-        borderRight: "60px solid transparent",
-        borderBottom: `60px solid ${theme.primaryColor}`,
-        opacity: 0.35,
+        bottom: 0, left: 0, right: 0, height: "3px",
+        background: `linear-gradient(90deg, transparent, ${P}45 60%, ${P})`,
       }} />
     </div>
   );
